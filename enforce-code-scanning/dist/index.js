@@ -32619,7 +32619,7 @@ const getInput = () => {
     }
 }
 
-const getAlerts = async (client, org, repo, threshold, age) => {
+const getAlerts = async (client, org, repo, number, threshold, age) => {
     try {
         const alerts = []
         for (const severity of thresholds[threshold]) {
@@ -32627,7 +32627,9 @@ const getAlerts = async (client, org, repo, threshold, age) => {
                 owner: org,
                 repo: repo,
                 state: 'open',
-                severity: severity
+                ref: `refs/pull/${number}/merge`,
+                severity: severity,
+                per_page: 100
             })
             alerts.push(..._alerts.map(alert => {
                 let exceedsAge = false
@@ -32673,7 +32675,7 @@ const main = async () => {
         const client = await newClient(input.token)
 
         core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}`)
-        const alerts = await getAlerts(client, input.org, input.repo, input.threshold, input.age)
+        const alerts = await getAlerts(client, input.org, input.repo, input.pr, input.threshold, input.age)
         if (alerts.length === 0) {
             core.info(`No alerts found for ${input.org}/${input.repo}`)
             return
