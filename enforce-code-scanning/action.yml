@@ -27,6 +27,7 @@ inputs:
     default: |
       Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts be resolved within 30 days.
       
+      
       If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.
       
       If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select `Re-run all jobs` at the top of the page: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
