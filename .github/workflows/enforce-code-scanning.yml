@@ -13,3 +13,5 @@ jobs:
     steps:
       - name: Validate Code Scanning Policy
         uses: department-of-veterans-affairs/security-tools/enforce-code-scanning@main
+        with:
+          threshold: "high"
