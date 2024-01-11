@@ -1,0 +1,9 @@
+name: "Policy: Code Scanning"
+on:
+  pull_request:
+jobs:
+  name: Enforce Code Scanning
+  runs-on: ubuntu-latest
+  steps:
+    - name: Validate Code Scanning Policy
+      uses: department-of-veterans-affairs/security-tools/enforce-code-scanning@main
