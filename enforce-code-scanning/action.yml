@@ -9,6 +9,10 @@ inputs:
     description: 'The current workflow run attempt'
     required: true
     default: ${{ github.run_attempt }}
+  default_branch:
+    description: 'The default branch of the repository'
+    required: true
+    default: ${{ github.event.repository.default_branch }}
   org:
     description: 'The GitHub organization that owns the repository'
     required: true
@@ -38,6 +42,10 @@ inputs:
     description: 'The GitHub token to use for API requests'
     required: true
     default: ${{ github.token }}
+  visibility:
+    description: 'Repository visibility'
+    required: true
+    default: ${{ github.event.repository.visibility }}
 runs:
   using: 'node20'
   main: 'dist/index.js'

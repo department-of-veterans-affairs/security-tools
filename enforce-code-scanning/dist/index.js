@@ -32599,22 +32599,26 @@ const getInput = () => {
     try {
         const age = parseInt(core.getInput('age', {required: true, trimWhitespace: true}))
         const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
+        const defaultBranch = core.getInput('default_branch', {required: true, trimWhitespace: true})
         const message = core.getInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
         const pr = parseInt(core.getInput('pull_request', {required: true, trimWhitespace: true}))
         const repo = core.getInput('repo', {required: true, trimWhitespace: true})
         const threshold = core.getInput('threshold', {required: true, trimWhitespace: true})
         const token = core.getInput('token', {required: true, trimWhitespace: true})
+        const visibility = core.getInput('visibility', {required: true, trimWhitespace: true})
 
         return {
             age: age,
             attempt: attempt,
+            defaultBranch: defaultBranch,
             org: org,
             repo: repo,
             message: message,
             pr: pr,
             threshold: threshold,
-            token: token
+            token: token,
+            visibility: visibility
         }
     } catch (e) {
         throw new Error(`Failed to retrieve input variables: ${e.message}`)
@@ -32676,8 +32680,8 @@ const main = async () => {
         const input = getInput()
         const client = await newClient(input.token)
 
-        const ref = input.attempt === 1 ? null : `refs/pull/${input.pr}/merge`
-        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref === null ? 'default_branch' : ref}`)
+        const ref = input.attempt === 1 ? input.defaultBranch : `refs/pull/${input.pr}/merge`
+        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
         const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
         if (alerts.length === 0) {
             core.info(`No alerts found for ${input.org}/${input.repo}`)
@@ -32689,7 +32693,8 @@ const main = async () => {
             .addHeading(`Code Scanning Policy Findings`)
             .addRaw(input.message)
             .addSeparator()
-            .addTable([
+        if (input.visibility === 'public') {
+            summary.addTable([
                 [
                     {data: 'Alert Number', header: true},
                     {data: 'URL', header: true},
@@ -32702,10 +32707,26 @@ const main = async () => {
                     `${alert.age} Days`,
                     `${alert.exceedsAge ? 'Yes' : 'No'}`
                 ])
-            ]).stringify()
+            ])
+        } else {
+            summary.addTable([
+                [
+                    {data: 'Alert Number', header: true},
+                    {data: 'URL', header: true},
+                    {data: 'Age', header: true},
+                    {data: 'Policy Violation', header: true}
+                ],
+                ...alerts.map(alert => [
+                    `${alert.number}`,
+                    `<a href="${alert.html_url}">Link</a>`,
+                    `${alert.age} Days`,
+                    `${alert.exceedsAge ? 'Yes' : 'No'}`
+                ])
+            ])
+        }
 
         core.info(`Creating comment for https://${input.org}/${input.repo}/pull/${input.pr}`)
-        await createComment(client, input.org, input.repo, input.pr, summary)
+        await createComment(client, input.org, input.repo, input.pr, summary.stringify())
 
         const violations = alerts.filter(alert => alert.exceedsAge)
         if (violations.length > 0) {
