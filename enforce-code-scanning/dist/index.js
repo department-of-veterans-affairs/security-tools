@@ -32600,7 +32600,7 @@ const getInput = () => {
         const age = parseInt(core.getInput('age', {required: true, trimWhitespace: true}))
         const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
         const defaultBranch = core.getInput('default_branch', {required: true, trimWhitespace: true})
-        const message = core.getInput('message', {required: true, trimWhitespace: true})
+        const message = core.getMultilineInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
         const pr = parseInt(core.getInput('pull_request', {required: true, trimWhitespace: true}))
         const repo = core.getInput('repo', {required: true, trimWhitespace: true})
