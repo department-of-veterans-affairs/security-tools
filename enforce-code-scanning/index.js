@@ -172,7 +172,7 @@ const main = async () => {
 
         const violations = alerts.filter(alert => alert.exceedsAge)
         if (violations.length > 0) {
-            core.setFailed(`Found ${violations.length} policy violations for ${input.org}/${input.repo}`)
+            core.setFailed(`Found ${violations.length} code scanning policy violations for ${input.org}/${input.repo}`)
         }
     } catch (e) {
         core.setFailed(e.message)
