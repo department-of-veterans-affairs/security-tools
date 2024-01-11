@@ -1,0 +1,39 @@
+name: Enforce Code Scanning
+description: Policy action for enforcing code scanning alert thresholds via pull requests
+inputs:
+  age:
+    description: 'If an alert exceeds this age (in days), it will block merging the pull request'
+    required: true
+    default: '30'
+  org:
+    description: 'The GitHub organization that owns the repository'
+    required: true
+    default: ${{ github.repository_owner }}
+  repo:
+    description: 'The GitHub repository name'
+    required: true
+    default: ${{ github.event.repository.name }}
+  message:
+    description: 'The message to display on the pull request'
+    required: true
+    default: |
+      Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts be resolved within 30 days.
+      
+      If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.
+      
+      If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select `Re-run all jobs` at the top of the page: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  pull_request:
+    description: 'The pull request number'
+    required: true
+    default: ${{ github.event.pull_request.number }}
+  threshold:
+    description: 'The severity threshold to enforce'
+    required: true
+    default: 'critical'
+  token:
+    description: 'The GitHub token to use for API requests'
+    required: true
+    default: ${{ github.token }}
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
