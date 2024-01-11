@@ -32598,6 +32598,7 @@ const newClient = async (token) => {
 const getInput = () => {
     try {
         const age = parseInt(core.getInput('age', {required: true, trimWhitespace: true}))
+        const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
         const message = core.getInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
         const pr = parseInt(core.getInput('pull_request', {required: true, trimWhitespace: true}))
@@ -32607,6 +32608,7 @@ const getInput = () => {
 
         return {
             age: age,
+            attempt: attempt,
             org: org,
             repo: repo,
             message: message,
@@ -32619,15 +32621,16 @@ const getInput = () => {
     }
 }
 
-const getAlerts = async (client, org, repo, number, threshold, age) => {
+const getAlerts = async (client, org, repo, number, threshold, age, attempt) => {
     try {
         const alerts = []
+        const ref = attempt === 1 ? null : `refs/pull/${number}/merge`
         for (const severity of thresholds[threshold]) {
             const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
                 owner: org,
                 repo: repo,
                 state: 'open',
-                ref: `refs/pull/${number}/merge`,
+                ref: ref,
                 severity: severity,
                 per_page: 100
             })
@@ -32675,7 +32678,7 @@ const main = async () => {
         const client = await newClient(input.token)
 
         core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}`)
-        const alerts = await getAlerts(client, input.org, input.repo, input.pr, input.threshold, input.age)
+        const alerts = await getAlerts(client, input.org, input.repo, input.pr, input.threshold, input.age, input.attempt)
         if (alerts.length === 0) {
             core.info(`No alerts found for ${input.org}/${input.repo}`)
             return

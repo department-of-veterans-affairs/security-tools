@@ -5,6 +5,10 @@ inputs:
     description: 'If an alert exceeds this age (in days), it will block merging the pull request'
     required: true
     default: '30'
+  attempt:
+    description: 'The current workflow run attempt'
+    required: true
+    default: ${{ github.run_attempt }}
   org:
     description: 'The GitHub organization that owns the repository'
     required: true
