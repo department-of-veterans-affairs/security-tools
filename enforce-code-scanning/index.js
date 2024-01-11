@@ -145,7 +145,7 @@ const main = async () => {
                 ],
                 ...alerts.map(alert => [
                     `${alert.number}`,
-                    `<a href="${alert.html_url}">${alert.html_url}</a>`,
+                    `<a href="${alert.html_url}">Link</a>`,
                     `${alert.age} Days`,
                     `${alert.exceedsAge ? 'Yes' : 'No'}`
                 ])
@@ -160,7 +160,7 @@ const main = async () => {
                 ],
                 ...alerts.map(alert => [
                     `${alert.number}`,
-                    `<a href="${alert.html_url}">Link</a>`,
+                    `<a href="${alert.html_url}">${alert.html_url}</a>`,
                     `${alert.age} Days`,
                     `${alert.exceedsAge ? 'Yes' : 'No'}`
                 ])
