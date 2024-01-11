@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "A collection of GitHub Actions Required Workflows for enforcing security policies",
   "scripts": {
-    "build:": "npm install && npm run build:enforce-code-scanning",
+    "build": "npm install && npm run build:enforce-code-scanning",
     "build:enforce-code-scanning": "ncc build enforce-code-scanning/index.js -o enforce-code-scanning/dist"
   },
   "repository": {
