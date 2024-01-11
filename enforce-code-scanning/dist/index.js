@@ -32621,10 +32621,9 @@ const getInput = () => {
     }
 }
 
-const getAlerts = async (client, org, repo, number, threshold, age, attempt) => {
+const getAlerts = async (client, org, repo, ref, threshold, age) => {
     try {
         const alerts = []
-        const ref = attempt === 1 ? null : `refs/pull/${number}/merge`
         for (const severity of thresholds[threshold]) {
             const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
                 owner: org,
@@ -32677,8 +32676,9 @@ const main = async () => {
         const input = getInput()
         const client = await newClient(input.token)
 
-        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}`)
-        const alerts = await getAlerts(client, input.org, input.repo, input.pr, input.threshold, input.age, input.attempt)
+        const ref = input.attempt === 1 ? null : `refs/pull/${input.pr}/merge`
+        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref === null ? 'default_branch' : ref}`)
+        const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
         if (alerts.length === 0) {
             core.info(`No alerts found for ${input.org}/${input.repo}`)
             return
