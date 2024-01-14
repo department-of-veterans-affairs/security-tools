@@ -11,7 +11,7 @@ jobs:
       pull-requests: write
       security-events: write
     steps:
-      - name: "Validate Policy:  CodeQL"
+      - name: "Validate Policy: CodeQL"
         uses: department-of-veterans-affairs/security-tools/enforce/codeql@main
       - name: "Validate Policy: Remediation"
         uses: department-of-veterans-affairs/security-tools/enforce/remediation@main
