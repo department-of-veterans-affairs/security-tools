@@ -32591,7 +32591,8 @@ const newClient = async (token) => {
                     return true
                 }
             },
-        }
+        },
+        userAgent: 'va-security-tools-remediation-0.0.1'
     })
 }
 
@@ -32684,8 +32685,7 @@ const main = async () => {
         core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
         const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
         if (alerts.length === 0) {
-            core.info(`No alerts found for ${input.org}/${input.repo}`)
-            return
+            return core.info(`No alerts found for ${input.org}/${input.repo}`)
         }
 
         core.info(`Found ${alerts.length} alerts for ${input.org}/${input.repo} with ${input.threshold} threshold`)

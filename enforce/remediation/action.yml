@@ -1,0 +1,46 @@
+name: Enforce Code Scanning Remediation
+description: Policy action for enforcing code scanning alert remediation via pull requests
+inputs:
+  age:
+    description: 'If an alert exceeds this age (in days), it will block merging the pull request'
+    required: true
+    default: '30'
+  attempt:
+    description: 'The current workflow run attempt'
+    required: true
+    default: ${{ github.run_attempt }}
+  default_branch:
+    description: 'The default branch of the repository'
+    required: true
+    default: ${{ github.event.repository.default_branch }}
+  org:
+    description: 'The GitHub organization that owns the repository'
+    required: true
+    default: ${{ github.repository_owner }}
+  repo:
+    description: 'The GitHub repository name'
+    required: true
+    default: ${{ github.event.repository.name }}
+  message:
+    description: 'The message to display on the pull request'
+    required: true
+    default: "Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts of severity <code>high</code> or higher be resolved within 30 days.<br><br>If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.<br><br>If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select <code>Re-run all jobs</code> at the top of the page: <a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}</a>"
+  pull_request:
+    description: 'The pull request number'
+    required: true
+    default: ${{ github.event.pull_request.number }}
+  threshold:
+    description: 'The severity threshold to enforce'
+    required: true
+    default: 'high'
+  token:
+    description: 'The GitHub token to use for API requests'
+    required: true
+    default: ${{ github.token }}
+  visibility:
+    description: 'Repository visibility'
+    required: true
+    default: ${{ github.event.repository.visibility }}
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
