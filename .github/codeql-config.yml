@@ -1,2 +1,3 @@
 paths-ignore:
-  - 'enforce/**/dist'
+  - 'enforce/codeql/dist'
+  - 'enforce/remediation/dist'
