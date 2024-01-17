@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "description": "A collection of GitHub Actions Required Workflows for enforcing security policies",
   "scripts": {
-    "build": "npm install && npm run build:codeql && npm run build:remediation",
-    "build:codeql": "ncc build enforce/codeql/index.js -o enforce/codeql/dist",
-    "build:remediation": "ncc build enforce/remediation/index.js -o enforce/remediation/dist"
+    "build": "npm install && npm run build:bypass:add-user && npm run build:enforce:codeql && npm run build:enforce:remediation",
+    "build:bypass:add-user": "ncc build bypass/add-user/index.js -o bypass/add-user/dist",
+    "build:enforce:codeql": "ncc build enforce/codeql/index.js -o enforce/codeql/dist",
+    "build:enforce:remediation": "ncc build enforce/remediation/index.js -o enforce/remediation/dist"
   },
   "repository": {
     "type": "git",

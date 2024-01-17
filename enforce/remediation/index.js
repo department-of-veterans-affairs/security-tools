@@ -106,10 +106,10 @@ const getAlerts = async (client, org, repo, ref, threshold, age) => {
 
 const createComment = async (client, org, repo, pr, message) => {
     try {
-        await client.pulls.createComment({
+        await client.issues.createComment({
             owner: org,
             repo: repo,
-            pull_number: pr,
+            issue_number: pr,
             body: message
         })
     } catch (e) {
