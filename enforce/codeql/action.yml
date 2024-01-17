@@ -1,10 +1,6 @@
 name: Enforce CodeQL Usage
 description: Policy action for enforcing the use of CodeQL via pull requests
 inputs:
-  attempt:
-    description: 'The current workflow run attempt'
-    required: true
-    default: ${{ github.run_attempt }}
   default_branch:
     description: 'The default branch of the repository'
     required: true
@@ -17,8 +13,12 @@ inputs:
     description: 'The GitHub repository name'
     required: true
     default: ${{ github.event.repository.name }}
-  message:
-    description: 'The message to display on the pull request'
+  message_not_found:
+    description: 'The message to display on the pull request when CodeQL has not yet been configured'
+    required: true
+    default: "Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts of severity <code>high</code> or higher be resolved within 30 days.<br><br>If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.<br><br>If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select <code>Re-run all jobs</code> at the top of the page: <a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}</a>"
+  message_no_recent_analysis:
+    description: 'The message to display on the pull request when CodeQL has not been run in the defined period'
     required: true
     default: "Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts of severity <code>high</code> or higher be resolved within 30 days.<br><br>If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.<br><br>If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select <code>Re-run all jobs</code> at the top of the page: <a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}</a>"
   period:

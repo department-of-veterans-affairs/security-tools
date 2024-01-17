@@ -2,7 +2,6 @@ const core = require('@actions/core')
 const {Octokit} = require('@octokit/rest')
 const {retry} = require('@octokit/plugin-retry')
 const {throttling} = require('@octokit/plugin-throttling')
-const {parse} = require("../remediation/dist");
 
 const newClient = async (token) => {
     const _Octokit = Octokit.plugin(retry, throttling)
@@ -31,9 +30,12 @@ const newClient = async (token) => {
 
 const getInput = () => {
     try {
-        const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
         const defaultBranch = core.getInput('default_branch', {required: true, trimWhitespace: true})
-        const message = core.getInput('message', {required: true, trimWhitespace: true})
+        const messageNotFound = core.getInput('message_not_found', {required: true, trimWhitespace: true})
+        const messageNoRecentAnalysis = core.getInput('message_no_recent_analysis', {
+            required: true,
+            trimWhitespace: true
+        })
         const org = core.getInput('org', {required: true, trimWhitespace: true})
         const period = parseInt(core.getInput('period', {required: true, trimWhitespace: true}))
         const pr = parseInt(core.getInput('pull_request', {required: true, trimWhitespace: true}))
@@ -41,11 +43,11 @@ const getInput = () => {
         const token = core.getInput('token', {required: true, trimWhitespace: true})
 
         return {
-            attempt: attempt,
             defaultBranch: defaultBranch,
             org: org,
             repo: repo,
-            message: message,
+            messageNotFound: messageNotFound,
+            messageNoRecentAnalysis: messageNoRecentAnalysis,
             period: period,
             pr: pr,
             token: token,
@@ -55,24 +57,44 @@ const getInput = () => {
     }
 }
 
-const getMostRecentAnalysis = async (client, org, repo, ref) => {
+const getMostRecentAnalysis = async (client, org, repo, refs) => {
     try {
-        const {data: response} = await client.request('GET /repos/{owner}/{repo}/code-scanning/analyses', {
+        core.info(`Retrieving most recent analysis for ref ${refs.pr}`)
+        const {data: prAnalyses} = await client.codeScanning.listRecentAnalyses({
             owner: org,
             repo: repo,
-            ref: ref,
+            ref: refs.pr,
             tool_name: 'CodeQL',
             per_page: 1
         })
-
-        if (response.length === 0) {
-            return null
+        if (prAnalyses.length > 0) {
+            return prAnalyses[0]
         }
-        return response[0]
     } catch (e) {
+        if (e.status === 404) {
+            try {
+                core.info(`No analysis found for ${refs.pr}, retrieving most recent analysis for ref ${refs.default}`)
+                const {data: defaultAnalyses} = await client.codeScanning.listRecentAnalyses({
+                    owner: org,
+                    repo: repo,
+                    ref: refs.default,
+                    tool_name: 'CodeQL',
+                    per_page: 1
+                })
+                if (defaultAnalyses.length > 0) {
+                    return defaultAnalyses[0]
+                }
+
+                return null
+            } catch (e) {
+                if (e.status === 404) {
+                    return null
+                }
+                throw new Error(`Failed to retrieve most recent analysis: ${e.message}`)
+            }
+        }
         throw new Error(`Failed to retrieve most recent analysis: ${e.message}`)
     }
-
 }
 
 const validateAnalysisPeriod = (analysis, period) => {
@@ -94,24 +116,30 @@ const createComment = async (client, org, repo, pr, message) => {
     } catch (e) {
         throw new Error(`Failed to create comment: ${e.message}`)
     }
-
 }
 
 const main = async () => {
-    const input = getInput()
-    const client = await newClient(input.token)
-    const ref = input.attempt === 1 ? input.defaultBranch : `refs/pull/${input.pr}/merge`
-    const analysis = await getMostRecentAnalysis(client, input.org, input.repo, ref)
-    if (analysis === null) {
-        core.setFailed(`No analysis found, setting status to failed`)
-        return await createComment(client, input.org, input.repo, input.pr, input.message)
+    try {
+        const input = getInput()
+        const client = await newClient(input.token)
+        const refs = {
+            default: input.defaultBranch,
+            pr: `refs/pull/${input.pr}/merge`
+        }
+        core.info(`Retrieving most recent analysis for ${input.org}/${input.repo}/pull/${input.pr} with refs ${JSON.stringify(refs)}`)
+        const analysis = await getMostRecentAnalysis(client, input.org, input.repo, refs)
+        if (analysis === null) {
+            core.setFailed(`No analysis found for any branch, setting status to failed`)
+            return await createComment(client, input.org, input.repo, input.pr, input.messageNotFound)
+        }
+        if (!validateAnalysisPeriod(analysis, input.period)) {
+            core.setFailed(`Most recent analysis is older than ${input.period} days, setting status to failed`)
+            return await createComment(client, input.org, input.repo, input.pr, input.messageNoRecentAnalysis)
+        }
+        core.info(`Analysis is within ${input.period} days, setting status to success`)
+    } catch (e) {
+        core.setFailed(e.message)
     }
-    if (!validateAnalysisPeriod(analysis, input.period)) {
-        core.setFailed(`Most recent analysis is older than ${input.period} days, setting status to failed`)
-        return await createComment(client, input.org, input.repo, input.pr, input.message)
-
-    }
-    core.info(`Analysis is within ${input.period} days, setting status to success`)
 }
 
 main()

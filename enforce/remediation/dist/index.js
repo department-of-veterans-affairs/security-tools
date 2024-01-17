@@ -32599,7 +32599,6 @@ const newClient = async (token) => {
 const getInput = () => {
     try {
         const age = parseInt(core.getInput('age', {required: true, trimWhitespace: true}))
-        const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
         const defaultBranch = core.getInput('default_branch', {required: true, trimWhitespace: true})
         const message = core.getInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
@@ -32611,7 +32610,6 @@ const getInput = () => {
 
         return {
             age: age,
-            attempt: attempt,
             defaultBranch: defaultBranch,
             org: org,
             repo: repo,
@@ -32626,15 +32624,16 @@ const getInput = () => {
     }
 }
 
-const getAlerts = async (client, org, repo, ref, threshold, age) => {
+const getAlerts = async (client, org, repo, refs, threshold, age) => {
     try {
         const alerts = []
         for (const severity of thresholds[threshold]) {
+            core.info(`Retrieving ${severity} alerts for ref ${refs.pr}`)
             const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
                 owner: org,
                 repo: repo,
                 state: 'open',
-                ref: ref,
+                ref: refs.pr,
                 severity: severity,
                 per_page: 100
             })
@@ -32656,6 +32655,10 @@ const getAlerts = async (client, org, repo, ref, threshold, age) => {
             }))
         }
 
+        if (alerts.length === 0) {
+            core.info(``)
+        }
+
         return alerts
     } catch (e) {
         throw new Error(`Failed to retrieve code scanning alerts: ${e.message}`)
@@ -32667,13 +32670,12 @@ const createComment = async (client, org, repo, pr, message) => {
         await client.issues.createComment({
             owner: org,
             repo: repo,
-            issue_number: pr,
+            issues: pr,
             body: message
         })
     } catch (e) {
         throw new Error(`Failed to create comment: ${e.message}`)
     }
-
 }
 
 const main = async () => {
@@ -32681,49 +32683,36 @@ const main = async () => {
         const input = getInput()
         const client = await newClient(input.token)
 
-        const ref = input.attempt === 1 ? input.defaultBranch : `refs/pull/${input.pr}/merge`
-        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
-        const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
+        const refs = {
+            default: input.defaultBranch,
+            pr: `refs/pull/${input.pr}/merge`
+        }
+        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${JSON.stringify(refs)}`)
+        const alerts = await getAlerts(client, input.org, input.repo, refs, input.threshold, input.age)
         if (alerts.length === 0) {
             return core.info(`No alerts found for ${input.org}/${input.repo}`)
         }
 
         core.info(`Found ${alerts.length} alerts for ${input.org}/${input.repo} with ${input.threshold} threshold`)
+        const headers = [
+            {data: 'Alert Number', header: true},
+            {data: 'URL', header: true},
+            {data: 'Age', header: true},
+            {data: 'Policy Violation', header: true}
+        ]
         const summary = core.summary
             .addHeading(`Code Scanning Policy Findings`)
             .addRaw(input.message)
             .addSeparator()
-        if (input.visibility === 'public') {
-            summary.addTable([
-                [
-                    {data: 'Alert Number', header: true},
-                    {data: 'URL', header: true},
-                    {data: 'Age', header: true},
-                    {data: 'Policy Violation', header: true}
-                ],
+            .addTable([
+                headers,
                 ...alerts.map(alert => [
                     `${alert.number}`,
-                    `<a href="${alert.html_url}">Link</a>`,
+                    `<a href="${alert.html_url}">${input.visibility === 'public' ? 'Link' : alert.html_url}</a>`,
                     `${alert.age} Days`,
                     `${alert.exceedsAge ? 'Yes' : 'No'}`
                 ])
             ])
-        } else {
-            summary.addTable([
-                [
-                    {data: 'Alert Number', header: true},
-                    {data: 'URL', header: true},
-                    {data: 'Age', header: true},
-                    {data: 'Policy Violation', header: true}
-                ],
-                ...alerts.map(alert => [
-                    `${alert.number}`,
-                    `<a href="${alert.html_url}">${alert.html_url}</a>`,
-                    `${alert.age} Days`,
-                    `${alert.exceedsAge ? 'Yes' : 'No'}`
-                ])
-            ])
-        }
 
         core.info(`Creating comment for https://${input.org}/${input.repo}/pull/${input.pr}`)
         await createComment(client, input.org, input.repo, input.pr, summary.stringify())
