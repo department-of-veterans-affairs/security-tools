@@ -1,0 +1,29 @@
+name: Add User to Ruleset Bypass
+description: Policy action for allowing users to request a bypass of a the ruleset
+inputs:
+  actor:
+    description: 'The GitHub user requesting the bypass'
+    required: true
+    default: ${{ github.actor }}
+  hours:
+    description: 'The number of hours before a users bypass expires'
+    required: true
+    default: '8'
+  message:
+    description: 'The message to display on the issue'
+    required: true
+    default: "You have been granted temporary access to bypass the ruleset."
+  org:
+    description: 'The GitHub organization that owns the repository'
+    required: true
+    default: ${{ github.repository_owner }}
+  slug:
+    description: 'The slug of the team with access to bypass the ruleset'
+    required: true
+  token:
+    description: 'The GitHub token to use for API requests'
+    required: true
+    default: ${{ github.token }}
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

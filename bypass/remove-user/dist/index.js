@@ -32588,18 +32588,16 @@ const newClient = async (token) => {
 const getInput = () => {
     try {
         const actor = core.getInput('actor', {required: true, trimWhitespace: true})
-        const issue = parseInt(core.getInput('issue', {required: true, trimWhitespace: true}))
+        const hours = parseInt(core.getInput('hours', {required: true, trimWhitespace: true}))
         const message = core.getInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
-        const repo = core.getInput('repo', {required: true, trimWhitespace: true})
         const slug = core.getInput('slug', {required: true, trimWhitespace: true})
         const token = core.getInput('token', {required: true, trimWhitespace: true})
 
         return {
             actor: actor,
-            issue: issue,
+            hours: hours,
             org: org,
-            repo: repo,
             message: message,
             slug: slug,
             token: token
@@ -32609,59 +32607,68 @@ const getInput = () => {
     }
 }
 
-const createComment = async (client, org, repo, pr, message) => {
+const listTeamMembers = async (client, org, slug) => {
     try {
-        await client.issues.createComment({
-            owner: org,
-            repo: repo,
-            issue_number: pr,
-            body: message
-        })
-    } catch (e) {
-        throw new Error(`Failed to create comment: ${e.message}`)
-    }
-}
-
-const addUserToTeam = async (client, org, team, user) => {
-    try {
-        await client.teams.addOrUpdateMembershipForUserInOrg({
-            team_slug: team,
-            username: user,
+        const response = await client.paginate(client.teams.listMembersInOrg, {
             org: org,
-            role: 'member'
+            team_slug: slug,
+            per_page: 100
         })
+        return response.map(member => member.login)
     } catch (e) {
-        throw new Error(`Failed to add user to team: ${e.message}`)
+        throw new Error(`Failed to list team members: ${e.message}`)
     }
 }
 
-const closeIssue = async (client, org, repo, issue) => {
+const retrieveAuditLog = async (client, org, actor, user, hours) => {
     try {
-        await client.issues.update({
-            owner: org,
-            repo: repo,
-            issue_number: issue,
-            state: 'closed'
+        const date = new Date()
+        date.setHours(date.getHours() - hours)
+        return await client.paginate('GET /orgs/{org}/audit-log', {
+            org: org,
+            phrase: `action:team.add_member operation:create actor:${actor} user:${user} created:>=${date.toISOString()}`,
+            per_page: 1
         })
     } catch (e) {
-        throw new Error(`Failed to close issue: ${e.message}`)
+        throw new Error(`Failed to retrieve audit log: ${e.message}`)
     }
+}
+
+const removeUserFromTeam = async (client, org, slug, user) => {
+    try {
+        await client.teams.removeMembershipForUserInOrg({
+            org: org,
+            team_slug: slug,
+            username: user,
+        })
+    } catch (e) {
+        throw new Error(`Failed to remove user from team: ${e.message}`)
+    }
+
 }
 
 const main = async () => {
-    let client, input
     try {
-        input = getInput()
-        client = await newClient(input.token)
-        core.info(`Adding ${input.actor} to ${input.slug} in ${input.org}`)
-        await addUserToTeam(client, input.org, input.slug, input.actor)
-        core.info(`Adding comment to ${input.repo}#${input.issue}`)
-        await createComment(client, input.org, input.repo, input.issue, input.message)
-        core.info(`Closing issue ${input.repo}#${input.issue}`)
-        await closeIssue(client, input.org, input.repo, input.issue)
+        const input = getInput()
+        const client = await newClient(input.token)
+        core.info(`Retrieving team members for ${input.slug} in ${input.org}`)
+        const members = await listTeamMembers(client, input.org, input.slug)
+        core.info(`Found ${members.length} members in ${input.slug} in ${input.org}`)
+        for (const member of members) {
+            try {
+                core.info(`Retrieving audit log for ${member} in ${input.org}`)
+                const log = await retrieveAuditLog(client, input.org, input.actor, member, input.hours)
+                if (log.length === 0) {
+                    core.info(`No audit log found for ${member} in ${input.org} in the last ${input.hours} hours, removing from team`)
+                    await removeUserFromTeam(client, input.org, input.slug, member)
+                } else {
+                    core.info(`Audit log entry found for ${member} in the last ${input.hours} hours, users bypass permission has not yet expired`)
+                }
+            } catch (e) {
+                core.warning(`Failed to remove ${member} from ${input.slug} in ${input.org}: ${e.message}`)
+            }
+        }
     } catch (e) {
-        core.info(`Adding failure comment to ${input.org}/${input.repo}#${input.issue}`)
-        await createComment(client, input.org, input.repo, input.issue, e.message)
         core.setFailed(e.message)
     }
 }
