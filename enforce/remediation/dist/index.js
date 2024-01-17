@@ -32599,6 +32599,7 @@ const newClient = async (token) => {
 const getInput = () => {
     try {
         const age = parseInt(core.getInput('age', {required: true, trimWhitespace: true}))
+        const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
         const defaultBranch = core.getInput('default_branch', {required: true, trimWhitespace: true})
         const message = core.getInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
@@ -32610,6 +32611,7 @@ const getInput = () => {
 
         return {
             age: age,
+            attempt: attempt,
             defaultBranch: defaultBranch,
             org: org,
             repo: repo,
@@ -32624,16 +32626,15 @@ const getInput = () => {
     }
 }
 
-const getAlerts = async (client, org, repo, refs, threshold, age) => {
+const getAlerts = async (client, org, repo, ref, threshold, age) => {
     try {
         const alerts = []
         for (const severity of thresholds[threshold]) {
-            core.info(`Retrieving ${severity} alerts for ref ${refs.pr}`)
             const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
                 owner: org,
                 repo: repo,
                 state: 'open',
-                ref: refs.pr,
+                ref: ref,
                 severity: severity,
                 per_page: 100
             })
@@ -32655,10 +32656,6 @@ const getAlerts = async (client, org, repo, refs, threshold, age) => {
             }))
         }
 
-        if (alerts.length === 0) {
-            core.info(``)
-        }
-
         return alerts
     } catch (e) {
         throw new Error(`Failed to retrieve code scanning alerts: ${e.message}`)
@@ -32667,10 +32664,10 @@ const getAlerts = async (client, org, repo, refs, threshold, age) => {
 
 const createComment = async (client, org, repo, pr, message) => {
     try {
-        await client.issues.createComment({
+        await client.pulls.createComment({
             owner: org,
             repo: repo,
-            issues: pr,
+            pull_number: pr,
             body: message
         })
     } catch (e) {
@@ -32683,12 +32680,9 @@ const main = async () => {
         const input = getInput()
         const client = await newClient(input.token)
 
-        const refs = {
-            default: input.defaultBranch,
-            pr: `refs/pull/${input.pr}/merge`
-        }
-        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${JSON.stringify(refs)}`)
-        const alerts = await getAlerts(client, input.org, input.repo, refs, input.threshold, input.age)
+        const ref = input.attempt === 1 ? input.defaultBranch : `refs/pull/${input.pr}/merge`
+        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
+        const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
         if (alerts.length === 0) {
             return core.info(`No alerts found for ${input.org}/${input.repo}`)
         }
