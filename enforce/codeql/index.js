@@ -101,6 +101,7 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
                     return defaultAnalyses[0]
                 }
 
+                core.warning(`No analysis found for ${refs.default}`)
                 return null
             } catch (e) {
                 if (e.status === 404) {
