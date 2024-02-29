@@ -1,17 +1,15 @@
-name: "Policy: Code Scanning"
+name: "Policy: Code Scanning Tools"
 
 on:
   pull_request:
 
 jobs:
   enforce:
-    name: Enforce Code Scanning
+    name: Enforce Tools
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      security-events: write
+      security-events: read
     steps:
       - name: "Validate Policy: CodeQL"
         uses: department-of-veterans-affairs/security-tools/enforce/codeql@main
-      - name: "Validate Policy: Remediation"
-        uses: department-of-veterans-affairs/security-tools/enforce/remediation@main
