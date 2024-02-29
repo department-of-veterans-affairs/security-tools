@@ -135,6 +135,33 @@ const createComment = async (client, org, repo, pr, message) => {
     }
 }
 
+const listComments = async (client, org, repo, pr) => {
+    try {
+        const issues = await client.paginate(client.issues.listComments, {
+            owner: org,
+            repo: repo,
+            issue_number: pr,
+            per_page: 100
+        })
+        return issues.filter(issue => issue.user.login === 'github-actions[bot]' && issue.body.includes('Code Scanning Analysis Not Found'))
+    } catch (e) {
+        throw new Error(`Failed to list comments: ${e.message}`)
+    }
+}
+
+const deleteComment = async (client, org, repo, pr, comment) => {
+    try {
+        await client.issues.deleteComment({
+            owner: org,
+            repo: repo,
+            comment_id: comment.id
+        })
+    } catch (e) {
+        throw new Error(`Failed to delete comment: ${e.message}`)
+    }
+
+}
+
 const main = async () => {
     try {
         const input = getInput()
@@ -143,6 +170,14 @@ const main = async () => {
             default: input.defaultBranch,
             pr: `refs/pull/${input.pr}/merge`
         }
+
+        core.info(`Listing previous comments for ${input.org}/${input.repo}/pull/${input.pr}`)
+        const comments = await listComments(client, input.org, input.repo, input.pr)
+        for(const comment of comments) {
+            core.info(`Deleting previous comment for ${input.org}/${input.repo}/pull/${input.pr}`)
+            await deleteComment(client, input.org, input.repo, input.pr, comment)
+        }
+
         core.info(`Retrieving most recent analysis for ${input.org}/${input.repo}/pull/${input.pr} with refs ${JSON.stringify(refs)}`)
         const analysis = await getMostRecentAnalysis(client, input.org, input.repo, refs)
         if (analysis === null) {
