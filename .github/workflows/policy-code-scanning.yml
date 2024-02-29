@@ -1,4 +1,4 @@
-name: "Policy: Code Scanning Tools"
+name: "Policy: Code Scanning"
 
 on:
   pull_request:
