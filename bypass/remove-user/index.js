@@ -1,7 +1,7 @@
-const core = require('@actions/core')
-const {Octokit} = require('@octokit/rest')
-const {retry} = require('@octokit/plugin-retry')
-const {throttling} = require('@octokit/plugin-throttling')
+import * as core from '@actions/core'
+import {Octokit} from '@octokit/rest'
+import {retry} from '@octokit/plugin-retry'
+import {throttling} from '@octokit/plugin-throttling'
 
 const newClient = async (token) => {
     const _Octokit = Octokit.plugin(retry, throttling)
