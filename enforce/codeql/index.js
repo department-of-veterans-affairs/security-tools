@@ -68,6 +68,7 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
             per_page: 1
         })
         if (prAnalyses.length > 0) {
+            core.info(`Most recent advanced configuration analysis found for ref ${refs.pr}: ${JSON.stringify(prAnalyses[0])}`)
             return prAnalyses[0]
         }
 
@@ -81,6 +82,7 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
             per_page: 1
         })
         if (prAnalysesHead.length > 0) {
+            core.info(`Most recent default analysis found for ref ${head}: ${JSON.stringify(prAnalysesHead[0])}`)
             return prAnalysesHead[0]
         }
     } catch (e) {
@@ -95,6 +97,7 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
                     per_page: 1
                 })
                 if (defaultAnalyses.length > 0) {
+                    core.info(`Most recent analysis found for ref ${refs.default}: ${JSON.stringify(defaultAnalyses[0])}`)
                     return defaultAnalyses[0]
                 }
 
