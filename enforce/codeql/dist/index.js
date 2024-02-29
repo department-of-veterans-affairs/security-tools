@@ -32400,7 +32400,7 @@ const getInput = () => {
 
 const getMostRecentAnalysis = async (client, org, repo, refs) => {
     try {
-        core.info(`Retrieving most recent analysis for ref ${refs.pr}`)
+        core.info(`Retrieving most recent advanced configuration analysis for ref ${refs.pr}`)
         const {data: prAnalyses} = await client.codeScanning.listRecentAnalyses({
             owner: org,
             repo: repo,
@@ -32410,6 +32410,19 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
         })
         if (prAnalyses.length > 0) {
             return prAnalyses[0]
+        }
+
+        const head = refs.pr.replaceAll('merge', 'head')
+        core.info(`No advanced configuration found, retrieving most recent default analysis for ref ${head}`)
+        const {data: prAnalysesHead} = await client.codeScanning.listRecentAnalyses({
+            owner: org,
+            repo: repo,
+            ref: head,
+            tool_name: 'CodeQL',
+            per_page: 1
+        })
+        if (prAnalysesHead.length > 0) {
+            return prAnalysesHead[0]
         }
     } catch (e) {
         if (e.status === 404) {
