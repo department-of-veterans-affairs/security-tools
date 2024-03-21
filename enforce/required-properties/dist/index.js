@@ -32376,21 +32376,11 @@ throttling.VERSION = dist_bundle_VERSION;
 throttling.triggersNotification = triggersNotification;
 
 
-;// CONCATENATED MODULE: ./enforce/remediation/index.js
+;// CONCATENATED MODULE: ./enforce/required-properties/index.js
 
 
 
 
-
-const thresholds = {
-    critical: ['critical'],
-    high: ['critical', 'high'],
-    medium: ['critical', 'high', 'medium'],
-    low: ['critical', 'high', 'medium', 'low'],
-    warning: ['critical', 'high', 'medium', 'low', 'warning'],
-    note: ['critical', 'high', 'medium', 'low', 'warning', 'note'],
-    error: ['critical', 'high', 'medium', 'low', 'warning', 'note', 'error']
-}
 
 const newClient = async (token) => {
     const _Octokit = dist_node.Octokit.plugin(retry, throttling)
@@ -32413,73 +32403,27 @@ const newClient = async (token) => {
                 }
             },
         },
-        userAgent: 'va-security-tools-remediation-0.0.1'
+        userAgent: 'va-security-tools-codeql-0.0.1'
     })
 }
 
 const getInput = () => {
     try {
-        const age = parseInt(core.getInput('age', {required: true, trimWhitespace: true}))
-        const attempt = parseInt(core.getInput('attempt', {required: true, trimWhitespace: true}))
-        const defaultBranch = core.getInput('default_branch', {required: true, trimWhitespace: true})
         const message = core.getInput('message', {required: true, trimWhitespace: true})
         const org = core.getInput('org', {required: true, trimWhitespace: true})
         const pr = parseInt(core.getInput('pull_request', {required: true, trimWhitespace: true}))
         const repo = core.getInput('repo', {required: true, trimWhitespace: true})
-        const threshold = core.getInput('threshold', {required: true, trimWhitespace: true})
         const token = core.getInput('token', {required: true, trimWhitespace: true})
-        const visibility = core.getInput('visibility', {required: true, trimWhitespace: true})
 
         return {
-            age: age,
-            attempt: attempt,
-            defaultBranch: defaultBranch,
+            message: message,
             org: org,
             repo: repo,
-            message: message,
             pr: pr,
-            threshold: threshold,
-            token: token,
-            visibility: visibility
+            token: token
         }
     } catch (e) {
         throw new Error(`Failed to retrieve input variables: ${e.message}`)
-    }
-}
-
-const getAlerts = async (client, org, repo, ref, threshold, age) => {
-    try {
-        const alerts = []
-        for (const severity of thresholds[threshold]) {
-            const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
-                owner: org,
-                repo: repo,
-                state: 'open',
-                ref: ref,
-                severity: severity,
-                per_page: 100
-            })
-            alerts.push(..._alerts.map(alert => {
-                let exceedsAge = false
-                const created = new Date(alert.created_at)
-                const now = new Date()
-                const diff = now - created
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-                if (days > age) {
-                    exceedsAge = true
-                }
-                return {
-                    number: alert.number,
-                    html_url: alert.html_url,
-                    exceedsAge: exceedsAge,
-                    age: days
-                }
-            }))
-        }
-
-        return alerts
-    } catch (e) {
-        throw new Error(`Failed to retrieve code scanning alerts: ${e.message}`)
     }
 }
 
@@ -32504,7 +32448,7 @@ const listComments = async (client, org, repo, pr) => {
             issue_number: pr,
             per_page: 100
         })
-        return issues.filter(issue => issue.user.login === 'github-actions[bot]' && issue.body.includes('Code Scanning Policy Findings'))
+        return issues.filter(issue => issue.user.login === 'github-actions[bot]' && issue.body.includes('Policy: Required Security Maintainers'))
     } catch (e) {
         throw new Error(`Failed to list comments: ${e.message}`)
     }
@@ -32528,47 +32472,31 @@ const main = async () => {
         const input = getInput()
         const client = await newClient(input.token)
 
-        core.info(`Listing previous comments for ${input.org}/${input.repo}/pull/${input.pr}`)
+        core.info(`Listing previous comments for https://${input.org}/${input.repo}/pull/${input.pr}`)
         const comments = await listComments(client, input.org, input.repo, input.pr)
         for(const comment of comments) {
             core.info(`Deleting previous comment for ${input.org}/${input.repo}/pull/${input.pr}`)
             await deleteComment(client, input.org, input.repo, input.pr, comment)
         }
 
-        const ref = input.attempt === 1 ? input.defaultBranch : `refs/pull/${input.pr}/merge`
-        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
-        const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
-        if (alerts.length === 0) {
-            return core.info(`No alerts found for ${input.org}/${input.repo}`)
+        core.info(`Checking for required properties for ${input.org}/${input.repo}`)
+        const {data} = await client.request('GET /repos/{owner}/{repo}/properties/values', {
+            owner: input.org,
+            repo: input.repo
+        })
+
+        core.info(`Checking for security_maintainers property`)
+        const securityMaintainer = data.find(property => property.property_name === 'security_maintainers')
+        if(!securityMaintainer) {
+            core.setFailed('Security Maintainers property not found')
+            return await createComment(client, input.org, input.repo, input.pr, input.message)
         }
-
-        core.info(`Found ${alerts.length} alerts for ${input.org}/${input.repo} with ${input.threshold} threshold`)
-        const headers = [
-            {data: 'Alert Number', header: true},
-            {data: 'URL', header: true},
-            {data: 'Age', header: true},
-            {data: 'Policy Violation', header: true}
-        ]
-        const summary = core.summary.addHeading(`Code Scanning Policy Findings`, 2)
-            .addRaw(input.message)
-            .addSeparator()
-            .addTable([
-                headers,
-                ...alerts.map(alert => [
-                    `${alert.number}`,
-                    `<a href="${alert.html_url}">${input.visibility === 'public' ? 'Link' : alert.html_url}</a>`,
-                    `${alert.age} Days`,
-                    `${alert.exceedsAge ? 'Yes' : 'No'}`
-                ])
-            ])
-
-        core.info(`Creating comment for https://${input.org}/${input.repo}/pull/${input.pr}`)
-        await createComment(client, input.org, input.repo, input.pr, summary.stringify())
-
-        const violations = alerts.filter(alert => alert.exceedsAge)
-        if (violations.length > 0) {
-            core.setFailed(`Found ${violations.length} code scanning policy violations for ${input.org}/${input.repo}`)
+        const maintainers = securityMaintainer.value.split(',').map(maintainer => maintainer.trim())
+        if(maintainers.length === 0 || maintainers.filter(maintainer => maintainer.includes('@')).length === 0) {
+            core.setFailed('Security Maintainers property is empty or does not contain any valid email addresses')
+            return await createComment(client, input.org, input.repo, input.pr, input.message)
         }
+        core.info(`Security Maintainers property found`)
     } catch (e) {
         core.setFailed(e.message)
     }
