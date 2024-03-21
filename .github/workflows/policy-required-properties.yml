@@ -12,4 +12,4 @@ jobs:
       pull-requests: write
     steps:
       - name: "Validate Policy: Required Properties"
-        uses: department-of-veterans-affairs/security-tools/enforce/repository-properties@main
+        uses: department-of-veterans-affairs/security-tools/enforce/required-properties@main
