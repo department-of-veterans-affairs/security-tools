@@ -1,0 +1,15 @@
+name: "Policy: Required Properties"
+
+on:
+  pull_request:
+
+jobs:
+  enforce:
+    name: Enforce Properties
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: "Validate Policy: Required Properties"
+        uses: department-of-veterans-affairs/security-tools/enforce/repository-properties@main
