@@ -32456,7 +32456,6 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
         const {data: prAnalysesHead} = await client.codeScanning.listRecentAnalyses({
             owner: org,
             repo: repo,
-            ref: head,
             tool_name: 'CodeQL',
             per_page: 1
         })
@@ -32464,6 +32463,7 @@ const getMostRecentAnalysis = async (client, org, repo, refs) => {
             core.info(`Most recent default analysis found for ref ${head}: ${JSON.stringify(prAnalysesHead[0])}`)
             return prAnalysesHead[0]
         }
+        return null
     } catch (e) {
         if (e.status === 404) {
             try {
@@ -32559,6 +32559,7 @@ const main = async () => {
 
         core.info(`Retrieving most recent analysis for ${input.org}/${input.repo}/pull/${input.pr} with refs ${JSON.stringify(refs)}`)
         const analysis = await getMostRecentAnalysis(client, input.org, input.repo, refs)
+        console.log(analysis)
         if (analysis === null) {
             core.setFailed(`No analysis found for any branch, setting status to failed`)
             return await createComment(client, input.org, input.repo, input.pr, input.messageNotFound)
