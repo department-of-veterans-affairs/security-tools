@@ -32560,6 +32560,7 @@ const main = async () => {
         ]
         const summary = core.summary.addHeading(`Code Scanning Policy Findings`, 2)
             .addRaw(input.message)
+            .addBreak()
             .addSeparator()
             .addTable([
                 headers,
