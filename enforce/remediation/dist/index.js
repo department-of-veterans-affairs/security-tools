@@ -32541,8 +32541,8 @@ const main = async () => {
             refs.push(input.defaultBranch)
         } else {
             refs.push(...[
-                `pull/${input.pr}/head`,
-                `pull/${input.pr}/merge`
+                `refs/pull/${input.pr}/head`,
+                `refs/pull/${input.pr}/merge`
             ])
         }
         core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref(s) ${refs.join(', ')}`)
