@@ -24,7 +24,7 @@ inputs:
   message:
     description: 'The message to display on the pull request'
     required: true
-    default: "Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts of severity <code>high</code> or higher be resolved within 30 days.<br><br>If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.<br><br>If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select <code>Re-run all jobs</code> at the top of the page: <a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}</a>"
+    default: "Your repository contains unresolved code scanning alerts. Policy requires that all code scanning alerts of severity <code>high</code> or higher be resolved within 30 days.<br><br>If your repository contains unresolved code scanning alerts older than 30 days, you will not be able to merge this pull request.<br><br>If this pull request remediates these alerts, after your pull requests CodeQL scan has completed, follow this link to re-run the policy check and select <code>Re-run all jobs</code> at the top of the page: <a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}</a><br><br>You may also re-reun this required check by simply commenting on this pull request with the following command:\n\n```bash\n/actions-bot rerun-required-workflows\n```"
   pull_request:
     description: 'The pull request number'
     required: true
