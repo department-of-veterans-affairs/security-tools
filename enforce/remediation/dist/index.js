@@ -32447,34 +32447,36 @@ const getInput = () => {
     }
 }
 
-const getAlerts = async (client, org, repo, ref, threshold, age) => {
+const getAlerts = async (client, org, repo, refs, threshold, age) => {
     try {
         const alerts = []
         for (const severity of thresholds[threshold]) {
-            const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
-                owner: org,
-                repo: repo,
-                state: 'open',
-                ref: ref,
-                severity: severity,
-                per_page: 100
-            })
-            alerts.push(..._alerts.map(alert => {
-                let exceedsAge = false
-                const created = new Date(alert.created_at)
-                const now = new Date()
-                const diff = now - created
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-                if (days > age) {
-                    exceedsAge = true
-                }
-                return {
-                    number: alert.number,
-                    html_url: alert.html_url,
-                    exceedsAge: exceedsAge,
-                    age: days
-                }
-            }))
+            for(const ref of refs) {
+                const _alerts = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/alerts', {
+                    owner: org,
+                    repo: repo,
+                    ref: ref,
+                    state: 'open',
+                    severity: severity,
+                    per_page: 100
+                })
+                alerts.push(..._alerts.map(alert => {
+                    let exceedsAge = false
+                    const created = new Date(alert.created_at)
+                    const now = new Date()
+                    const diff = now - created
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+                    if (days > age) {
+                        exceedsAge = true
+                    }
+                    return {
+                        number: alert.number,
+                        html_url: alert.html_url,
+                        exceedsAge: exceedsAge,
+                        age: days
+                    }
+                }))
+            }
         }
 
         return alerts
@@ -32510,19 +32512,6 @@ const listComments = async (client, org, repo, pr) => {
     }
 }
 
-const defaultCodeScanningEnabled = async (client, org, repo) => {
-    try {
-        const {data} = await client.codeScanning.getDefaultSetup({
-            owner: org,
-            repo: repo
-        })
-
-        return data.state === 'configured'
-    } catch (e) {
-        throw new Error(`Failed to retrieve default code scanning setup: ${e.message}`)
-    }
-}
-
 const deleteComment = async (client, org, repo, pr, comment) => {
     try {
         await client.issues.deleteComment({
@@ -32547,10 +32536,17 @@ const main = async () => {
             await deleteComment(client, input.org, input.repo, input.pr, comment)
         }
 
-        const enabled = await defaultCodeScanningEnabled(client, input.org, input.repo)
-        const ref = input.attempt === 1 ? input.defaultBranch : enabled ? `refs/pull/${input.pr}/head` : `refs/pull/${input.pr}/merge`
-        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
-        const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
+        const refs = []
+        if(input.attempt === 1) {
+            refs.push(input.defaultBranch)
+        } else {
+            refs.push(...[
+                `pull/${input.pr}/head`,
+                `pull/${input.pr}/merge`
+            ])
+        }
+        core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref(s) ${refs.join(', ')}`)
+        const alerts = await getAlerts(client, input.org, input.repo, refs, input.threshold, input.age)
         if (alerts.length === 0) {
             return core.info(`No alerts found for ${input.org}/${input.repo}`)
         }
