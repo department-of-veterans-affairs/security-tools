@@ -8,6 +8,7 @@ jobs:
     name: Enforce Tools
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
       security-events: read
     steps:
