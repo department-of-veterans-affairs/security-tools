@@ -32510,6 +32510,19 @@ const listComments = async (client, org, repo, pr) => {
     }
 }
 
+const defaultCodeScanningEnabled = async (client, org, repo) => {
+    try {
+        const {data} = await client.codeScanning.getDefaultSetup({
+            owner: org,
+            repo: repo
+        })
+
+        return data.state === 'configured'
+    } catch (e) {
+        throw new Error(`Failed to retrieve default code scanning setup: ${e.message}`)
+    }
+}
+
 const deleteComment = async (client, org, repo, pr, comment) => {
     try {
         await client.issues.deleteComment({
@@ -32520,7 +32533,6 @@ const deleteComment = async (client, org, repo, pr, comment) => {
     } catch (e) {
         throw new Error(`Failed to delete comment: ${e.message}`)
     }
-
 }
 
 const main = async () => {
@@ -32535,7 +32547,8 @@ const main = async () => {
             await deleteComment(client, input.org, input.repo, input.pr, comment)
         }
 
-        const ref = input.attempt === 1 ? input.defaultBranch : `refs/pull/${input.pr}/merge`
+        const enabled = await defaultCodeScanningEnabled(client, input.org, input.repo)
+        const ref = input.attempt === 1 ? input.defaultBranch : enabled ? `refs/pull/${input.pr}/head` : `refs/pull/${input.pr}/merge`
         core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref ${ref}`)
         const alerts = await getAlerts(client, input.org, input.repo, ref, input.threshold, input.age)
         if (alerts.length === 0) {
