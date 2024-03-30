@@ -32447,6 +32447,27 @@ const getInput = () => {
     }
 }
 
+const getAnalysis = async (client, org, repo, refs) => {
+    try {
+        for(const ref of refs) {
+            const analysis = await client.paginate('GET /repos/{owner}/{repo}/code-scanning/analyses', {
+                owner: org,
+                repo: repo,
+                ref: ref,
+                per_page: 100
+            })
+            if (analysis.length > 0) {
+                return true
+            }
+        }
+
+        return false
+    } catch (e) {
+        throw new Error(`Failed to retrieve code scanning analyses: ${e.message}`)
+    }
+
+}
+
 const getAlerts = async (client, org, repo, refs, threshold, age) => {
     try {
         const alerts = []
@@ -32537,14 +32558,15 @@ const main = async () => {
             await deleteComment(client, input.org, input.repo, input.pr, comment)
         }
 
-        const refs = []
-        if(input.attempt === 1) {
-            refs.push(input.defaultBranch)
-        } else {
-            refs.push(...[
-                `refs/pull/${input.pr}/head`,
-                `refs/pull/${input.pr}/merge`
-            ])
+
+        let refs = [
+            `refs/pull/${input.pr}/head`,
+            `refs/pull/${input.pr}/merge`
+        ]
+        const hasAnalysis = await getAnalysis(client, input.org, input.repo, refs)
+        if (!hasAnalysis) {
+            core.info(`No code scanning analyses found for ${input.org}/${input.repo}/pull/${input.pr}`)
+            refs = [input.defaultBranch]
         }
         core.info(`Retrieving code scanning alerts for ${input.org}/${input.repo}/pull/${input.pr} with ref(s) ${refs.join(', ')}`)
         const alerts = await getAlerts(client, input.org, input.repo, refs, input.threshold, input.age)
