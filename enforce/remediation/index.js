@@ -100,7 +100,7 @@ const getAlerts = async (client, org, repo, refs, threshold, age) => {
             }
         }
 
-        return alerts
+        return alerts.filter((alert, index, self) => self.findIndex(a => a.number === alert.number) === index)
     } catch (e) {
         throw new Error(`Failed to retrieve code scanning alerts: ${e.message}`)
     }
@@ -127,6 +127,7 @@ const listComments = async (client, org, repo, pr) => {
             issue_number: pr,
             per_page: 100
         })
+
         return issues.filter(issue => issue.user.login === 'github-actions[bot]' && issue.body.includes('Code Scanning Policy Findings'))
     } catch (e) {
         throw new Error(`Failed to list comments: ${e.message}`)
