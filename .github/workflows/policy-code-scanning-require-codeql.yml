@@ -1,11 +1,11 @@
-name: "Policy: Code Scanning"
+name: "Policy: Code Scanning Require CodeQL"
 
 on:
   pull_request:
 
 jobs:
   enforce:
-    name: Enforce Tools
+    name: Enforce CodeQL
     runs-on: ubuntu-latest
     permissions:
       contents: read
