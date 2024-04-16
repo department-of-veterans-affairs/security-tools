@@ -32,7 +32,7 @@ inputs:
   threshold:
     description: 'The severity threshold to enforce'
     required: true
-    default: 'high'
+    default: 'critical'
   token:
     description: 'The GitHub token to use for API requests'
     required: true
