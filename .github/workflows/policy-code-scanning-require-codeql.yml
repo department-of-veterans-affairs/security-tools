@@ -14,6 +14,3 @@ jobs:
     steps:
       - name: "Validate Policy: CodeQL"
         uses: department-of-veterans-affairs/security-tools/enforce/codeql@main
-      - name: "Validate Policy: Remediation"
-        if: success()
-        uses: department-of-veterans-affairs/security-tools/enforce/remediation@main
